@@ -7,15 +7,13 @@ sensitive data.
 
 ## Honest scope statement
 
-**This is not a verified-compatible implementation of any specific
-upstream AgentEval schema.** The exact AgentEval fixture format could not
-be reliably confirmed at the time this was written. Rather than invent a
-compatibility claim, this module defines its own versioned,
-self-describing export format (`RegressionFixture`,
-`FIXTURE_SCHEMA_VERSION = "1.0"`) as a documented, stable boundary — a real
-AgentEval-specific adapter can be layered on top of this later (translating
-`RegressionFixture` into whatever AgentEval actually expects) without this
-module needing to change.
+**This module’s export format is intentionally neutral** — a versioned,
+self-describing `RegressionFixture` (`FIXTURE_SCHEMA_VERSION = "1.0"`), not
+a claim that KarmaSakshi embeds AgentEval’s internal schemas. The
+AgentEval-side consuming bridge (seal → attempt → witness → score) lives
+in the [agenteval](https://github.com/nishanttyagi28/agenteval) repo and
+translates / scores against AgentEval’s real `AgentAdapter` / golden-suite
+APIs without requiring this export module to change.
 
 ## Usage
 
@@ -120,3 +118,26 @@ itself never makes, blocks, or overrides a security decision.
 - **Local file only.** No shared/remote store (database, object storage)
   ships in this phase; multiple processes writing to the same file
   concurrently are not coordinated beyond OS-level append semantics.
+
+
+## Consuming bridge on AgentEval (seal → witness → score)
+
+The fixture/memory helpers above are the **export** boundary. The
+**consuming** integration that seals an approved effect, attempts an
+action, witnesses the outcome, and scores the run with AgentEval’s real
+schemas lives in the AgentEval repository:
+
+- Adapter + helpers: [`adapters/karmasakshi.py`](https://github.com/nishanttyagi28/agenteval/blob/main/adapters/karmasakshi.py)
+- Offline demo: [`examples/karmasakshi_bridge/`](https://github.com/nishanttyagi28/agenteval/tree/main/examples/karmasakshi_bridge)
+- Docs: [`docs/karmasakshi-bridge.md`](https://github.com/nishanttyagi28/agenteval/blob/main/docs/karmasakshi-bridge.md)
+
+```bash
+# in a clone of https://github.com/nishanttyagi28/agenteval
+pip install -e ".[dev,karmasakshi]"
+python examples/karmasakshi_bridge/run_demo.py
+```
+
+Demo story: approved effect = pay ₹1500 to Priya; wrong amount (₹1501) or
+wrong payee is blocked by KarmaSakshi (`ManifestTamperedError`) and
+recorded as an AgentEval failure (plus optional Failure Memory). The
+correct attempt seals, commits, witnesses, and passes AgentEval scoring.
