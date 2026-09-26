@@ -8,6 +8,7 @@ from __future__ import annotations
 from karmasakshi.handoff.model import (
     WORKFLOW_EXPORT_FORMAT,
     WORKFLOW_EXPORT_SCHEMA_VERSION,
+    HandoffAcceptance,
     HandoffEnvelope,
     WorkflowExport,
 )
@@ -15,6 +16,7 @@ from karmasakshi.handoff.service import (
     WorkflowRecord,
     WorkflowVerificationResult,
     accept_handoff,
+    assert_handoff_ready_for_execute,
     create_handoff,
     export_workflow,
     open_workflow,
@@ -26,11 +28,13 @@ from karmasakshi.handoff.service import (
 __all__ = [
     "WORKFLOW_EXPORT_FORMAT",
     "WORKFLOW_EXPORT_SCHEMA_VERSION",
+    "HandoffAcceptance",
     "HandoffEnvelope",
     "WorkflowExport",
     "WorkflowRecord",
     "WorkflowVerificationResult",
     "accept_handoff",
+    "assert_handoff_ready_for_execute",
     "create_handoff",
     "export_workflow",
     "open_workflow",

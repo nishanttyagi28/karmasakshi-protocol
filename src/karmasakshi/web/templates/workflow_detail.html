@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}{{ workflow_id }} - KarmaSakshi Console{% endblock %}
+{% block content %}
+<h1>Workflow {{ workflow_id }}</h1>
+<p><a href="/console/workflows">All workflows</a></p>
+<p>Read-only. This page does not accept handoffs or commit effects.</p>
+{% if error %}
+<p><span class="badge badge-bad">unreadable</span> {{ error }}</p>
+{% else %}
+<p>
+  {% if verified %}<span class="badge badge-ok">verified</span>
+  {% else %}<span class="badge badge-bad">failed</span>{% endif %}
+  {{ handoffs|length }} handoff(s), {{ passports|length }} passport(s), {{ evidence_packs|length }} evidence pack(s)
+</p>
+{% if reasons %}
+<ul>
+  {% for reason in reasons %}<li>{{ reason }}</li>{% endfor %}
+</ul>
+{% endif %}
+
+<h2>Handoffs</h2>
+{% if not handoffs %}
+<p>No handoffs recorded.</p>
+{% else %}
+<table>
+  <tr><th>From</th><th>To</th><th>Depth</th><th>Scope</th><th>Accepted</th><th>Hash</th></tr>
+  {% for hop in handoffs %}
+  <tr id="{{ hop.handoff_id }}">
+    <td>{{ hop.from_agent }}</td>
+    <td>{{ hop.to_agent }}</td>
+    <td>{{ hop.depth }}</td>
+    <td>{{ hop.scope }}</td>
+    <td>
+      {% if hop.accepted == "accepted" %}<span class="badge badge-ok">accepted</span>
+      {% elif hop.accepted == "tampered" %}<span class="badge badge-bad">tampered</span>
+      {% else %}<span class="badge badge-warn">not accepted</span>{% endif %}
+    </td>
+    <td>
+      {% if hop.hash_ok %}<span class="badge badge-ok">hash ok</span>
+      {% else %}<span class="badge badge-bad">hash mismatch</span>{% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
+
+<h2>Passports</h2>
+{% if not passports %}
+<p>No passports recorded.</p>
+{% else %}
+<table>
+  <tr><th>Manifest</th><th>Grant</th><th>Outcome</th></tr>
+  {% for passport in passports %}
+  <tr>
+    <td>{{ passport.manifest_id }}</td>
+    <td>{{ passport.grant_id }}</td>
+    <td>
+      {% if passport.outcome_status == "verified_match" %}<span class="badge badge-ok">{{ passport.outcome_status }}</span>
+      {% elif passport.outcome_status == "failed" or passport.outcome_status == "verified_mismatch" %}<span class="badge badge-bad">{{ passport.outcome_status }}</span>
+      {% else %}<span class="badge badge-warn">{{ passport.outcome_status }}</span>{% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
+
+<h2>Evidence packs</h2>
+{% if not evidence_packs %}
+<p>No evidence packs recorded.</p>
+{% else %}
+<table>
+  <tr><th>Manifest</th><th>Verification</th></tr>
+  {% for pack in evidence_packs %}
+  <tr>
+    <td>{{ pack.manifest_id }}</td>
+    <td>
+      {% if pack.verified %}<span class="badge badge-ok">verified</span>
+      {% else %}<span class="badge badge-bad">failed</span> {{ pack.reasons }}{% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
+{% endif %}
+{% endblock %}

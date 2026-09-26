@@ -46,6 +46,7 @@ karmasakshi approve <manifest_id> --approver-id ID --key-id ID --approval-policy
 karmasakshi approvals inspect <manifest_id> --approval-policy-bundle-id ID --proposer-id ID --subject-id ID
 
 karmasakshi grant issue <manifest_id> --issuer-id ID --subject-id ID --key-id ID [--audience ...] [--max-uses N]
+    [--max-amount-minor N] [--currency CODE] [--allowed-recipient ID ...] [--effect-type TYPE ...]
     [--policy-bundle-id ID] [--separation-policy-bundle-id ID] [--role "role_name:principal_id" ...]
     [--decision-envelope-id ID | --causal-graph-id ID]
 karmasakshi grant issue-with-quorum <manifest_id> --approval-policy-bundle-id ID --grant-issuer-id ID
@@ -83,11 +84,13 @@ karmasakshi evidence-pack build <manifest_id> [--grant-id ID] [-o FILE]
 karmasakshi evidence-pack verify <pack_file>
 
 karmasakshi handoff create <parent_grant_id> --to-agent ID --task TEXT --issuer-id ID --key-id ID --workflow-id ID
-    [--from-agent ID] [--effect-type TYPE ...] [--recipient ID ...] [--max-amount-minor N]
-    [--max-uses N] [--ttl-seconds N] [--manifest-id ID]
+    [--handoff-id ID] [--from-agent ID] [--effect-type TYPE ...] [--recipient ID ...]
+    [--max-amount-minor N] [--max-uses N] [--ttl-seconds N] [--manifest-id ID]
 karmasakshi handoff accept <handoff_id> --agent-id ID
 karmasakshi handoff inspect <handoff_id>
 karmasakshi workflow export <workflow_id> [-o FILE]
+karmasakshi workflow verify <file> [--revocations FILE]
+karmasakshi execute <manifest_id> --grant-id ID --adapter NAME [--workflow-id ID --handoff-id ID]
 
 karmasakshi agenteval record <manifest_id> --failure-category CAT [--invariant STR]
 karmasakshi agenteval history
@@ -112,16 +115,18 @@ security-focused tool. Third-party adapters are used via the Python API.
   `--body TEXT`.
 - `--adapter payment`: `--source-account ID`, `--beneficiary ID`,
   `--amount-minor-units N`, `--currency CODE`, `--reference TEXT`,
-  `--fee-minor-units N`, `--fund-source-account N` (pre-funds the account
-  before the effect, for one-shot local testing).
+  `--fee-minor-units N`, `--fund-source-account N` (credits the manifest
+  source account before the effect, for local testing). On `execute`,
+  `--fund-account-id` must match that source account; omit it and the
+  command uses the account sealed in the manifest. A mismatch errors
+  before commit.
 
-**Important limitation:** the `email` and `payment` adapters hold state in
-memory only. A fresh CLI process starts them from empty (zero balance,
-empty outbox) — there is no cross-process persistence for these two
-reference adapters (only `sqlite` persists naturally, via its own database
-file). Use `karmasakshi demo --all` to see a full single-process
-walkthrough of all three, or drive the Python API directly for real
-multi-step usage against the in-memory adapters.
+**Payment simulator state** is stored in
+`<workspace>/payment-simulator.json`, so `verify` in a later process can
+see a payment committed earlier. If `prepare` already saved the balance
+that the seal fingerprinted, `execute` does not add
+`--fund-source-account` on top of it. The email sandbox is still
+process-local. SQLite persists in its own database file.
 
 ## `assess`
 

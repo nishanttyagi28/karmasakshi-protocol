@@ -8,7 +8,7 @@ import typer
 
 from karmasakshi.cli.common import emit, run_guarded
 from karmasakshi.cli.workspace import Workspace
-from karmasakshi.domain.common import Principal
+from karmasakshi.domain.common import MonetaryAmount, Principal
 from karmasakshi.domain.enums import PrincipalType
 from karmasakshi.duty.roles import RoleAssignment
 from karmasakshi.grants.model import ScopeConstraints
@@ -29,6 +29,29 @@ def _parse_role_assignment(manifest_hash: str, role_entries: list[str]) -> RoleA
             raise typer.BadParameter(f"--role must be 'role_name:principal_id', got {entry!r}")
         assignments.append((role, principal_id))
     return RoleAssignment(manifest_hash=manifest_hash, assignments=tuple(assignments))
+
+
+def _issue_scope(
+    *,
+    max_amount_minor: int | None,
+    currency: str,
+    allowed_recipient: list[str],
+) -> ScopeConstraints:
+    """Map CLI scope flags onto ``ScopeConstraints``.
+
+    No flags means an unrestricted scope, which is what ``grant issue``
+    did before these flags existed.
+    """
+    if max_amount_minor is None and not allowed_recipient:
+        return ScopeConstraints()
+    return ScopeConstraints(
+        max_amount=(
+            MonetaryAmount(currency=currency, minor_units=max_amount_minor)
+            if max_amount_minor is not None
+            else None
+        ),
+        recipients=tuple(allowed_recipient) if allowed_recipient else None,
+    )
 
 
 @grant_app.command("issue")
@@ -86,6 +109,22 @@ def issue(
             "Mutually exclusive with --decision-envelope-id",
         ),
     ] = None,
+    max_amount_minor: Annotated[
+        int | None,
+        typer.Option("--max-amount-minor", help="Cap the grant at this many minor units"),
+    ] = None,
+    currency: Annotated[str, typer.Option("--currency")] = "INR",
+    allowed_recipient: Annotated[
+        list[str],
+        typer.Option("--allowed-recipient", help="Restrict recipients. Repeatable."),
+    ] = [],  # noqa: B006
+    effect_type: Annotated[
+        list[str],
+        typer.Option(
+            "--effect-type",
+            help="Allowed effect type. Repeatable. Defaults to the manifest effect type.",
+        ),
+    ] = [],  # noqa: B006
 ) -> None:
     """Issue an ExecutionGrant bound to a sealed manifest (invariant #30:
     issuer must be human or service, never the agent itself)."""
@@ -117,6 +156,12 @@ def issue(
         subject = Principal(principal_id=subject_id, principal_type=subject_type)
         grant_audience = tuple(audience) or (sealed.manifest.adapter.adapter_id,)
         expires_at = now + timedelta(seconds=ttl_seconds)
+        scope = _issue_scope(
+            max_amount_minor=max_amount_minor,
+            currency=currency,
+            allowed_recipient=allowed_recipient,
+        )
+        effect_types = tuple(effect_type) if effect_type else (sealed.manifest.effect_type,)
         if decision_envelope_id is not None:
             envelope = workspace.load_decision_envelope(decision_envelope_id)
             grant = engine.authorize_with_envelope(
@@ -125,8 +170,8 @@ def issue(
                 issuer=issuer,
                 subject=subject,
                 audience=grant_audience,
-                allowed_effect_types=(sealed.manifest.effect_type,),
-                scope=ScopeConstraints(),
+                allowed_effect_types=effect_types,
+                scope=scope,
                 not_before=now,
                 expires_at=expires_at,
                 signing_key=signing_key,
@@ -143,8 +188,8 @@ def issue(
                 issuer=issuer,
                 subject=subject,
                 audience=grant_audience,
-                allowed_effect_types=(sealed.manifest.effect_type,),
-                scope=ScopeConstraints(),
+                allowed_effect_types=effect_types,
+                scope=scope,
                 not_before=now,
                 expires_at=expires_at,
                 signing_key=signing_key,
@@ -159,8 +204,8 @@ def issue(
                 issuer=issuer,
                 subject=subject,
                 audience=grant_audience,
-                allowed_effect_types=(sealed.manifest.effect_type,),
-                scope=ScopeConstraints(),
+                allowed_effect_types=effect_types,
+                scope=scope,
                 not_before=now,
                 expires_at=expires_at,
                 signing_key=signing_key,

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Workflows - KarmaSakshi Console{% endblock %}
+{% block content %}
+<h1>Workflows</h1>
+<p>Read-only view of workflow exports in the workspace. Nothing on this page issues or revokes a grant.</p>
+{% if workspace_root %}
+<p>Workspace: {{ workspace_root }}</p>
+{% else %}
+<p>No workspace found. Set <code>KARMASAKSHI_HOME</code> or run the CLI in a directory that has <code>.karmasakshi/</code>.</p>
+{% endif %}
+{% if not workflows %}
+<p>No workflows in this workspace.</p>
+{% else %}
+<table>
+  <tr><th>Workflow</th><th>Handoffs</th><th>Passports</th><th>Evidence</th><th>Check</th></tr>
+  {% for row in workflows %}
+  <tr id="{{ row.workflow_id }}">
+    <td><a href="/console/workflows/{{ row.workflow_id }}">{{ row.workflow_id }}</a></td>
+    <td>{{ row.handoffs }}</td>
+    <td>{{ row.passports }}</td>
+    <td>{{ row.evidence_packs }}</td>
+    <td>
+      {% if row.status == "verified" %}<span class="badge badge-ok">verified</span>
+      {% elif row.status == "unreadable" %}<span class="badge badge-bad">unreadable</span>
+      {% else %}<span class="badge badge-bad">failed</span>{% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
+{% endblock %}
