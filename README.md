@@ -116,7 +116,7 @@ Things you can verify in this repo (verified against current `main`):
 
 | | |
 | --- | --- |
-| Automated tests | **1073 passed**, 8 skipped (Redis tests skip without a live Redis) |
+| Automated tests | **1077 passed**, 8 skipped (Redis tests skip without a live Redis) |
 | Security invariants documented + mapped to tests | **85** ([docs/security-model.md](docs/security-model.md)) |
 | Deterministic demo scenarios | **15** (`karmasakshi demo --all`) |
 | Buyer acceptance checks | **25** (`karmasakshi-acceptance`) |
