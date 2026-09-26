@@ -14,8 +14,11 @@
 <table>
   <tr><th>Workflow</th><th>Handoffs</th><th>Passports</th><th>Evidence</th><th>Check</th></tr>
   {% for row in workflows %}
-  <tr id="{{ row.workflow_id }}">
-    <td><a href="/console/workflows/{{ row.workflow_id }}">{{ row.workflow_id }}</a></td>
+  <tr id="{{ row.file_id }}">
+    <td>
+      <a href="/console/workflows/{{ row.file_id }}">{{ row.workflow_id }}</a>
+      {% if row.duplicate %}<span class="badge badge-warn">duplicate workflow id</span>{% endif %}
+    </td>
     <td>{{ row.handoffs }}</td>
     <td>{{ row.passports }}</td>
     <td>{{ row.evidence_packs }}</td>

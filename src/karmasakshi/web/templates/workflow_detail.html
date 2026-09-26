@@ -2,6 +2,9 @@
 {% block title %}{{ workflow_id }} - KarmaSakshi Console{% endblock %}
 {% block content %}
 <h1>Workflow {{ workflow_id }}</h1>
+{% if file_id and file_id != workflow_id %}
+<p>File <code>{{ file_id }}</code></p>
+{% endif %}
 <p><a href="/console/workflows">All workflows</a></p>
 <p>Read-only. This page does not accept handoffs or commit effects.</p>
 {% if error %}

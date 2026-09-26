@@ -9,6 +9,7 @@ base.html makes unauthenticated local mode visually unmistakable.
 from __future__ import annotations
 
 import os
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Annotated, Any
@@ -211,12 +212,13 @@ def _acceptance_label(workspace: Workspace, envelope: HandoffEnvelope) -> str:
     return "not accepted"
 
 
-def _workflow_summary(workspace: Workspace, workflow_id: str) -> dict[str, Any]:
+def _workflow_summary(workspace: Workspace, file_id: str) -> dict[str, Any]:
     try:
-        export = workspace.load_workflow_export(workflow_id)
+        export = workspace.load_workflow_export(file_id)
     except (OSError, ValidationError, ValueError):
         return {
-            "workflow_id": workflow_id,
+            "file_id": file_id,
+            "workflow_id": file_id,
             "handoffs": "-",
             "passports": "-",
             "evidence_packs": "-",
@@ -224,6 +226,7 @@ def _workflow_summary(workspace: Workspace, workflow_id: str) -> dict[str, Any]:
         }
     result = verify_workflow_export(export)
     return {
+        "file_id": file_id,
         "workflow_id": export.workflow_id,
         "handoffs": len(export.handoffs),
         "passports": len(export.passports),
@@ -280,8 +283,11 @@ def workflows_view(request: Request) -> HTMLResponse:
     root = None
     if workspace is not None and workspace.workflows_dir.is_dir():
         root = str(workspace.root)
-        for workflow_id in workspace.list_workflow_ids():
-            rows.append(_workflow_summary(workspace, workflow_id))
+        for file_id in workspace.list_workflow_ids():
+            rows.append(_workflow_summary(workspace, file_id))
+    counts = Counter(row["workflow_id"] for row in rows)
+    for row in rows:
+        row["duplicate"] = counts[row["workflow_id"]] > 1
     return _templates.TemplateResponse(
         request,
         "workflows.html",
@@ -297,6 +303,7 @@ def workflow_detail(workflow_id: str, request: Request) -> HTMLResponse:
     context: dict[str, Any] = {
         "dev_mode": is_dev_mode(),
         "workflow_id": workflow_id,
+        "file_id": workflow_id,
         "error": None,
         "verified": False,
         "reasons": [],
