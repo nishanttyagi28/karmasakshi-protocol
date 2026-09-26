@@ -111,6 +111,18 @@ class IncomparableConstraintError(DelegationError):
     """Two constraints cannot be safely compared; treated as widening (fail closed)."""
 
 
+class HandoffError(KarmaSakshiError):
+    """Base class for multi-agent handoff failures."""
+
+
+class HandoffRejectedError(HandoffError):
+    """A handoff was rejected. The receiver must not act."""
+
+
+class WorkflowVerificationError(HandoffError):
+    """A workflow export failed offline verification."""
+
+
 # --- State machine ---------------------------------------------------------------
 
 
