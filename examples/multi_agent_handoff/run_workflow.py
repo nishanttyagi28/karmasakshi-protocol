@@ -11,7 +11,7 @@ the other two agents before anything is committed.
 Run from the repo root:
 
     python examples/multi_agent_handoff/run_workflow.py
-    karmasakshi workflow export wf-refund-8842 --workspace .karmasakshi
+    karmasakshi --workspace .karmasakshi workflow export wf-refund-8842
 """
 
 from __future__ import annotations
@@ -39,6 +39,7 @@ from karmasakshi.engine import EngineContext, KarmaSakshiEngine
 from karmasakshi.errors import KarmaSakshiError
 from karmasakshi.grants.model import ScopeConstraints
 from karmasakshi.handoff import (
+    HandoffAcceptance,
     WorkflowExport,
     WorkflowRecord,
     accept_handoff,
@@ -319,11 +320,25 @@ def run_demo() -> dict[str, Any]:
 
 
 def persist_workflow(export: WorkflowExport, workspace: Path) -> Path:
-    """Write the export where ``karmasakshi workflow export`` can read it."""
+    """Write the export where ``karmasakshi workflow export`` can read it.
+
+    The graph accepts each handoff before it commits. Those acceptances
+    live only in the engine unless they are written next to the envelopes,
+    and the console reads the files.
+    """
     ws = Workspace(workspace)
     ws.ensure_initialized()
     for envelope in export.handoffs:
         ws.save_handoff(envelope)
+        ws.save_handoff_acceptance(
+            HandoffAcceptance(
+                handoff_id=envelope.handoff_id,
+                workflow_id=envelope.workflow_id,
+                accepted_by=envelope.to_agent.principal_id,
+                accepted_at=envelope.created_at,
+                content_hash=envelope.content_hash,
+            )
+        )
     return ws.save_workflow_export(export)
 
 
@@ -345,7 +360,7 @@ def main(argv: list[str] | None = None) -> None:
     print(f"handoffs: {len(export.handoffs)}")
     print(f"operating balance: {result['balance']}")
     print(f"saved: {saved}")
-    print(f"karmasakshi workflow export {export.workflow_id} --workspace {args.workspace}")
+    print(f"karmasakshi --workspace {args.workspace} workflow export {export.workflow_id}")
     if not result["evidence_verified"]:
         raise SystemExit(1)
 

@@ -288,7 +288,7 @@ A planner can pass work to another agent only as a narrower grant. The receiver 
 ```bash
 pip install -e ".[langgraph]"
 python examples/multi_agent_handoff/run_workflow.py
-karmasakshi workflow export wf-refund-8842 --workspace .karmasakshi
+karmasakshi --workspace .karmasakshi workflow export wf-refund-8842
 ```
 
 That run is offline: three fixed agents, one simulated payment, passports, and one evidence pack. The script writes the workflow into `./.karmasakshi` so the export command above can verify it. A CLI-only walkthrough of the same flow is in [docs/multi-agent-handoff.md](docs/multi-agent-handoff.md).
