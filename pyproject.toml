@@ -124,6 +124,9 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 minversion = "8.0"
+# CI runs the pytest console script, which does not put the repo root on
+# sys.path. examples/ and tests/ are imported from there.
+pythonpath = ["."]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 markers = [
