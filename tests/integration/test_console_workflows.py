@@ -84,3 +84,49 @@ def test_console_workflow_pages_show_handoffs_passports_and_tamper(
     assert "hash mismatch" in tampered_page.text
     assert "badge-bad" in tampered_page.text
     assert 'method="post"' not in tampered_page.text
+
+
+def test_workflow_list_links_by_filename_and_warns_on_duplicate_id(
+    monkeypatch,
+    tmp_path,
+    engine_factory,
+    fake_adapter,
+    manifest_factory,
+    human_principal,
+    issuer_signing_key,
+    fixed_clock,
+):
+    monkeypatch.setenv(DEV_MODE_ENV, "1")
+    export = _run_workflow(
+        engine_factory(),
+        fake_adapter,
+        manifest_factory,
+        human_principal,
+        issuer_signing_key,
+        fixed_clock.now(),
+        workflow_id="wf-console",
+        manifest_id="manifest-console",
+    )
+    workspace = Workspace(tmp_path / "ws")
+    workspace.ensure_initialized()
+    workspace.save_workflow_export(export)
+    copy = workspace.workflows_dir / "copy-wf.json"
+    copy.write_text(
+        (workspace.workflows_dir / "wf-console.json").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+
+    app = create_app(data_dir=tmp_path / "api-data")
+    app.state.console_workspace = workspace.root
+    client = TestClient(app)
+    listing = client.get("/console/workflows")
+    assert listing.status_code == 200
+    assert 'href="/console/workflows/wf-console"' in listing.text
+    assert 'href="/console/workflows/copy-wf"' in listing.text
+    assert listing.text.count('href="/console/workflows/wf-console"') == 1
+    assert "duplicate workflow id" in listing.text
+
+    copy_page = client.get("/console/workflows/copy-wf")
+    assert copy_page.status_code == 200
+    assert "File <code>copy-wf</code>" in copy_page.text
+    assert "wf-console" in copy_page.text

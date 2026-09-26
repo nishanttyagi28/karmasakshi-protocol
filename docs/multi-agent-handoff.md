@@ -110,7 +110,7 @@ By default the script also writes the workflow into `./.karmasakshi`
 (`--workspace` changes the directory). After it finishes, this works:
 
 ```bash
-karmasakshi workflow export wf-refund-8842 --workspace .karmasakshi
+karmasakshi --workspace .karmasakshi workflow export wf-refund-8842
 ```
 
 ## CLI-only three-agent workflow

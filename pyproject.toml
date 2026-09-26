@@ -37,7 +37,7 @@ classifiers = [
 
 dependencies = [
     "pydantic>=2.7,<3",
-    "cryptography>=44.0,<50",
+    "cryptography>=44.0,<51",
     "typer>=0.12,<1.0",
     "rich>=13.7,<16",
     "orjson>=3.10,<4",

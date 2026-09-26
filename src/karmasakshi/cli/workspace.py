@@ -299,18 +299,37 @@ class Workspace:
             return None
         return HandoffAcceptance.model_validate_json(path.read_text(encoding="utf-8"))
 
+    def _path_inside(self, directory: Path, name: str) -> Path:
+        """Join ``name`` onto ``directory`` and refuse to leave that directory.
+
+        Workflow and handoff ids come from the command line. ``os.path.join``
+        drops the directory when ``name`` is absolute, and ``..`` walks out
+        of it, so the joined path is normalized and checked before use.
+        """
+        base = str(directory)
+        if not base.endswith(os.sep):
+            base += os.sep
+        fullpath = os.path.normpath(os.path.join(base, name))
+        if not fullpath.startswith(base):
+            raise ValueError(f"refusing to use {name!r} outside {directory}")
+        return Path(fullpath)
+
     def save_workflow_export(self, export: WorkflowExport) -> Path:
         self.workflows_dir.mkdir(parents=True, exist_ok=True)
-        path = self.workflows_dir / f"{export.workflow_id}.json"
+        path = self._path_inside(self.workflows_dir, f"{export.workflow_id}.json")
         path.write_text(export.model_dump_json(indent=2), encoding="utf-8")
         return path
 
     def load_workflow_export(self, workflow_id: str) -> WorkflowExport:
-        path = self.workflows_dir / f"{workflow_id}.json"
+        path = self._path_inside(self.workflows_dir, f"{workflow_id}.json")
         return WorkflowExport.model_validate_json(path.read_text(encoding="utf-8"))
 
     def has_workflow(self, workflow_id: str) -> bool:
-        return (self.workflows_dir / f"{workflow_id}.json").exists()
+        try:
+            path = self._path_inside(self.workflows_dir, f"{workflow_id}.json")
+        except ValueError:
+            return False
+        return path.exists()
 
     def list_workflow_ids(self) -> list[str]:
         if not self.workflows_dir.exists():

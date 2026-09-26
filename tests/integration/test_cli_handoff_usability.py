@@ -182,6 +182,13 @@ def test_cli_workflow_export_includes_passport_and_evidence(tmp_path):
             "handoff-executor",
         ]
     )
+    proof_path = tmp_path / "ws" / "manifests" / f"{manifest_id}.proof.json"
+    stored_proof = proof_path.read_bytes()
+    verified_again = _run(workspace + ["--json", "verify", manifest_id, "--adapter", "payment"])
+    again = json.loads(verified_again.output)
+    assert again["matched_expected"] is True
+    assert again["already_verified"] is True
+    assert proof_path.read_bytes() == stored_proof
     exported = _run(workspace + ["workflow", "export", "wf-refund-8842"])
     assert "2 handoff(s), 1 passport(s), 1 evidence pack(s); VERIFIED" in " ".join(
         exported.output.split()

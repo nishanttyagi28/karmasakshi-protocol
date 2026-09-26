@@ -43,6 +43,27 @@ loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   match, before commit.
 - Security invariants 81–85.
 
+### Fixed
+
+- `cryptography` is allowed up to 50.x (`>=44.0,<51`). 49.0.0 is
+  PYSEC-2026-3552 (CVE-2026-69247, a PKCS#7 Bleichenbacher oracle).
+- `karmasakshi workflow export <id> --workspace ...` is not a valid
+  command: `--workspace` is global. The README, the handoff doc, and
+  the example now print `karmasakshi --workspace .karmasakshi workflow export <id>`.
+- `karmasakshi verify` on a manifest that is already verified (including
+  after `execute --workflow-id`) reports the stored outcome proof and
+  exits 0. It does not attempt `verified -> verified`.
+- `execute --fund-source-account` after `prepare` sealed an insufficient
+  balance fails before commit, and says to fund at prepare time. It no
+  longer skips the credit and then raises `StaleManifestError`.
+- The multi-agent example writes handoff acceptance records, so the
+  console shows those handoffs as accepted.
+- The console workflow list links by the export file name. Two files
+  that store the same `workflow_id` are both listed, with a duplicate
+  warning.
+- Loading a workflow export refuses an id that would leave the
+  workflows directory (CodeQL `py/path-injection`).
+
 ## [0.2.0] - 2026-07-30
 
 Evaluation-ready self-hosted Milestone A release of the protocol after the
