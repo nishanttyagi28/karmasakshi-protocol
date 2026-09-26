@@ -24,7 +24,7 @@ from karmasakshi.engine.core import KarmaSakshiEngine
 from karmasakshi.errors import HandoffRejectedError, KarmaSakshiError
 from karmasakshi.grants.model import ExecutionGrant, ScopeConstraints
 from karmasakshi.grants.verifier import verify_grant
-from karmasakshi.handoff.model import HandoffEnvelope, WorkflowExport
+from karmasakshi.handoff.model import HandoffAcceptance, HandoffEnvelope, WorkflowExport
 from karmasakshi.passports.generator import build_passport
 from karmasakshi.passports.v2 import ActionPassportV2, upgrade_passport_v1_to_v2
 from karmasakshi.portable.builder import build_evidence_pack
@@ -184,6 +184,53 @@ def create_handoff(
     return envelope
 
 
+def assert_handoff_ready_for_execute(
+    engine: KarmaSakshiEngine,
+    envelope: HandoffEnvelope,
+    grant: ExecutionGrant,
+    acceptance: HandoffAcceptance,
+    *,
+    workflow_id: str,
+) -> HandoffEnvelope:
+    """Fail closed unless this accepted handoff is the one being executed.
+
+    The acceptance record is what proves the executing agent already called
+    ``accept_handoff``. This function checks that record, then calls
+    ``accept_handoff`` again so expiry, signature, chain, and revocation are
+    still enforced at execute time.
+    """
+    if envelope.workflow_id != workflow_id or acceptance.workflow_id != workflow_id:
+        raise HandoffRejectedError(
+            f"handoff {envelope.handoff_id} belongs to workflow {envelope.workflow_id}, "
+            f"not {workflow_id}"
+        )
+    if acceptance.handoff_id != envelope.handoff_id:
+        raise HandoffRejectedError(
+            f"acceptance record is for handoff {acceptance.handoff_id}, not {envelope.handoff_id}"
+        )
+    if acceptance.accepted_by != envelope.to_agent.principal_id:
+        raise HandoffRejectedError(
+            f"handoff {envelope.handoff_id} was not accepted by the executing agent "
+            f"{envelope.to_agent.principal_id}"
+        )
+    if (
+        acceptance.content_hash != envelope.content_hash
+        or envelope.compute_content_hash() != envelope.content_hash
+    ):
+        raise HandoffRejectedError(
+            f"handoff {envelope.handoff_id} content hash does not match the acceptance record"
+        )
+    if (
+        grant.grant_id != envelope.grant.grant_id
+        or grant.canonical_hash() != envelope.grant.canonical_hash()
+    ):
+        raise HandoffRejectedError(
+            f"grant {grant.grant_id} is not the delegated grant on handoff {envelope.handoff_id}"
+        )
+    receiver = Principal(principal_id=acceptance.accepted_by, principal_type=PrincipalType.AGENT)
+    return accept_handoff(engine, envelope, receiver)
+
+
 def accept_handoff(
     engine: KarmaSakshiEngine,
     envelope: HandoffEnvelope,
@@ -278,13 +325,22 @@ def export_workflow(
     return draft.model_copy(update={"export_hash": draft.compute_export_hash()})
 
 
-def verify_workflow_export(export: WorkflowExport) -> WorkflowVerificationResult:
+def verify_workflow_export(
+    export: WorkflowExport,
+    *,
+    revoked_grant_ids: set[str] | None = None,
+) -> WorkflowVerificationResult:
     """Check one export offline.
 
     Evidence packs are passed to ``verify_evidence_pack``. Handoffs are
     checked against this workflow's id and root grant, so a handoff taken
     from another workflow does not verify even if that handoff is
     internally consistent.
+
+    ``revoked_grant_ids`` is optional. A historical export does not carry
+    the live revocation set: revocation is enforced at ``accept_handoff``
+    and again at ``commit``. Passing a list here is an extra check a
+    reviewer opts into. Omitting it leaves the verdict unchanged.
     """
     reasons: list[str] = []
     export_hash_verified = export.compute_export_hash() == export.export_hash
@@ -334,6 +390,15 @@ def verify_workflow_export(export: WorkflowExport) -> WorkflowVerificationResult
             except KarmaSakshiError as exc:
                 handoffs_bound = False
                 reasons.append(f"handoff {envelope.handoff_id} chain: {exc}")
+
+    if revoked_grant_ids:
+        chain_ids = {export.root_grant.grant_id}
+        for envelope in export.handoffs:
+            chain_ids.update(grant.grant_id for grant in envelope.lineage)
+        listed = sorted(chain_ids & revoked_grant_ids)
+        if listed:
+            handoffs_bound = False
+            reasons.append("revoked grant(s) in chain: " + ", ".join(listed))
 
     pack_results: list[EvidencePackVerificationResult] = []
     packs_ok = True
@@ -499,6 +564,7 @@ __all__ = [
     "WorkflowRecord",
     "WorkflowVerificationResult",
     "accept_handoff",
+    "assert_handoff_ready_for_execute",
     "create_handoff",
     "export_workflow",
     "open_workflow",

@@ -118,6 +118,39 @@ class HandoffEnvelope(BaseModel):
         return canonical_hash(self.canonical_content())
 
 
+class HandoffAcceptance(BaseModel):
+    """Record that one agent accepted one envelope at one content hash.
+
+    Written by ``handoff accept``. ``execute`` refuses to treat a handoff as
+    ready unless this record is present and still matches the envelope.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    handoff_id: str
+    workflow_id: str
+    accepted_by: str
+    accepted_at: datetime
+    content_hash: str
+
+    @field_validator("handoff_id", "workflow_id", "accepted_by")
+    @classmethod
+    def _validate_ids(cls, value: str) -> str:
+        if not value or len(value) > 128:
+            raise ValueError("identifier fields must be 1-128 chars")
+        return value
+
+    @field_validator("accepted_at")
+    @classmethod
+    def _validate_time(cls, value: datetime) -> datetime:
+        return ensure_utc(value)
+
+    @field_validator("content_hash")
+    @classmethod
+    def _validate_hash(cls, value: str) -> str:
+        return _validate_sha256(value)
+
+
 class WorkflowExport(BaseModel):
     """One file a reviewer can check without the live engine.
 
@@ -178,6 +211,7 @@ class WorkflowExport(BaseModel):
 __all__ = [
     "WORKFLOW_EXPORT_FORMAT",
     "WORKFLOW_EXPORT_SCHEMA_VERSION",
+    "HandoffAcceptance",
     "HandoffEnvelope",
     "WorkflowExport",
 ]

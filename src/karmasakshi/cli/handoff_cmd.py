@@ -11,8 +11,10 @@ from karmasakshi.cli.common import emit, run_guarded
 from karmasakshi.cli.workspace import Workspace
 from karmasakshi.domain.common import MonetaryAmount, Principal
 from karmasakshi.domain.enums import PrincipalType
+from karmasakshi.errors import HandoffRejectedError
 from karmasakshi.grants.model import ScopeConstraints
 from karmasakshi.handoff import (
+    HandoffAcceptance,
     accept_handoff,
     create_handoff,
     export_workflow,
@@ -70,6 +72,10 @@ def create(
         str | None,
         typer.Option("--manifest-id", help="Bind the child grant to this sealed manifest"),
     ] = None,
+    handoff_id: Annotated[
+        str | None,
+        typer.Option("--handoff-id", help="Use this id instead of a generated UUID"),
+    ] = None,
 ) -> None:
     """Delegate a narrower grant and write a handoff envelope.
 
@@ -81,6 +87,10 @@ def create(
 
     def _do() -> None:
         parent = workspace.load_grant(parent_grant_id)
+        if handoff_id is not None and workspace.has_handoff(handoff_id):
+            raise HandoffRejectedError(
+                f"handoff id {handoff_id!r} already exists in this workspace"
+            )
         signing_key = workspace.load_signing_key(key_id)
         engine = workspace.build_engine()
         if workspace.has_workflow(workflow_id):
@@ -114,6 +124,7 @@ def create(
             max_uses=max_uses,
             expires_at=expires_at,
             manifest_hash=manifest_hash,
+            handoff_id=handoff_id,
         )
         handoff_path = workspace.save_handoff(envelope)
         workspace.save_grant(envelope.grant)
@@ -158,6 +169,15 @@ def accept(
         engine = workspace.build_engine()
         receiver = Principal(principal_id=agent_id, principal_type=PrincipalType.AGENT)
         accept_handoff(engine, envelope, receiver)
+        workspace.save_handoff_acceptance(
+            HandoffAcceptance(
+                handoff_id=envelope.handoff_id,
+                workflow_id=envelope.workflow_id,
+                accepted_by=agent_id,
+                accepted_at=engine.context.clock.now(),
+                content_hash=envelope.content_hash,
+            )
+        )
         emit(
             {
                 "handoff_id": envelope.handoff_id,
