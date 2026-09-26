@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 
 import typer
 
+from karmasakshi.adapters.base import OutcomeProof
 from karmasakshi.adapters.payment_simulator import PaymentSimulator
 from karmasakshi.cli.adapter_factory import build_adapter
 from karmasakshi.cli.common import emit, run_guarded
@@ -16,6 +17,7 @@ from karmasakshi.handoff import (
     record_effect,
     workflow_from_export,
 )
+from karmasakshi.state_machine.states import LifecycleState
 
 
 def execute(
@@ -222,20 +224,37 @@ def verify(
         )
         engine = workspace.build_engine()
         workspace.reconstruct_lifecycle_state(engine, manifest_id)
-        proof = engine.verify(sealed.manifest, commit_result, adapter_instance, context=None)
-        workspace.save_outcome_proof(manifest_id, proof)
-        emit(
-            {
+
+        def _report(proof: OutcomeProof, *, stored: bool) -> None:
+            payload: dict[str, Any] = {
                 "manifest_id": manifest_id,
                 "matched_expected": proof.matched_expected,
                 "detail": proof.detail,
-            },
-            as_json=as_json,
-            human=(
-                f"Verification for [bold]{manifest_id}[/bold]: "
-                f"{'matched expected outcome' if proof.matched_expected else 'MISMATCH'}"
-            ),
-        )
+            }
+            status = "matched expected outcome" if proof.matched_expected else "MISMATCH"
+            note = ""
+            if stored:
+                payload["already_verified"] = True
+                note = " (stored result; no state change)"
+            emit(
+                payload,
+                as_json=as_json,
+                human=f"Verification for [bold]{manifest_id}[/bold]: {status}{note}",
+            )
+
+        # execute --workflow-id already verified. A second verify must not
+        # try verified -> verified; that transition is illegal.
+        if engine.get_lifecycle_state(manifest_id) == LifecycleState.VERIFIED:
+            stored_proof = workspace.load_outcome_proof(manifest_id)
+            if stored_proof is None:
+                raise ValueError(
+                    f"manifest {manifest_id!r} is already verified, but no outcome proof is stored"
+                )
+            _report(stored_proof, stored=True)
+            return
+        proof = engine.verify(sealed.manifest, commit_result, adapter_instance, context=None)
+        workspace.save_outcome_proof(manifest_id, proof)
+        _report(proof, stored=False)
 
     run_guarded(as_json, _do)
 
@@ -309,9 +328,10 @@ def _fund_manifest_source(
     ``prepare`` already fingerprints the balance and, when asked, writes
     that balance into the workspace snapshot. Funding again on top of a
     matching snapshot would change the balance and fail the precondition,
-    which leaves the manifest failed. If the snapshot is empty (no prior
-    prepare in this workspace), apply ``--fund-source-account`` to the
-    manifest's own source account.
+    which leaves the manifest failed. If that sealed balance cannot cover
+    the effect, refuse before commit and tell the caller to fund at
+    prepare time. If the snapshot is empty (no ``balance:`` fingerprint),
+    apply ``--fund-source-account`` to the manifest's own source account.
     """
     if fund_source_account is None and fund_account_id is None:
         return
@@ -327,6 +347,17 @@ def _fund_manifest_source(
     if fingerprint is not None and fingerprint.value.startswith("balance:"):
         expected = int(fingerprint.value.removeprefix("balance:"))
         if simulator.get_balance(source) == expected:
+            amount = sealed.manifest.parameters.get("amount_minor_units")
+            fee = sealed.manifest.parameters.get("fee_minor_units", 0)
+            if isinstance(amount, int) and isinstance(fee, int) and expected < amount + fee:
+                total = amount + fee
+                raise ValueError(
+                    f"prepare sealed {source!r} at balance {expected}, which cannot "
+                    f"cover this effect ({total}). --fund-source-account now would "
+                    "change the sealed fingerprint, so it is not applied. Re-run "
+                    "prepare with --fund-source-account so the fingerprint includes "
+                    "the funded balance."
+                )
             return
     simulator.fund_account(source, fund_source_account)
 
