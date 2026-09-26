@@ -5,12 +5,11 @@ are wired programmatically via the Python API (see docs/adapter-authoring.md),
 not dynamically loaded from CLI strings, to avoid an arbitrary-code-loading
 surface in a security-focused CLI.
 
-Note: the payment and email adapters hold their state in memory, so a
-fresh CLI process starts them from empty (zero balance / empty outbox).
-Only the SQLite adapter persists naturally across separate CLI
-invocations. Use ``karmasakshi demo`` to see a full single-process
-walkthrough of all three, or drive the Python API directly for real
-multi-step usage.
+Note: the email adapter holds its outbox in memory, so a fresh CLI
+process starts it empty. The payment simulator can be restored from a
+snapshot (the CLI stores one in the workspace). Only the SQLite adapter
+persists through its own database file. Use ``karmasakshi demo`` to see a
+full single-process walkthrough of all three.
 """
 
 from __future__ import annotations
@@ -38,7 +37,8 @@ def build_adapter(
     sqlite_db_path: str | None,
     sqlite_table: str,
     fund_source_account: int | None,
-    fund_account_id: str,
+    fund_account_id: str | None = None,
+    payment_simulator: PaymentSimulator | None = None,
 ) -> EffectAdapter:
     if choice == "sqlite":
         if not sqlite_db_path:
@@ -47,8 +47,10 @@ def build_adapter(
     if choice == "email":
         return EmailSandboxAdapter(SandboxOutbox())
     if choice == "payment":
-        simulator = PaymentSimulator()
+        simulator = payment_simulator if payment_simulator is not None else PaymentSimulator()
         if fund_source_account is not None:
+            if not fund_account_id:
+                raise ValueError("fund_account_id is required when --fund-source-account is set")
             simulator.fund_account(fund_account_id, fund_source_account)
         return PaymentSimulatorAdapter(simulator)
     raise ValueError(f"unknown adapter choice: {choice!r} (expected sqlite, email, or payment)")

@@ -15,6 +15,7 @@ from datetime import datetime
 from pathlib import Path
 
 from karmasakshi.adapters.base import CommitResult, CompensationResult, OutcomeProof
+from karmasakshi.adapters.payment_simulator import PaymentSimulator
 from karmasakshi.approval.model import ApprovalStatement
 from karmasakshi.audit.journal import AuditJournal
 from karmasakshi.audit.sqlite_backend import SQLiteAuditBackend
@@ -35,7 +36,7 @@ from karmasakshi.engine.core import KarmaSakshiEngine
 from karmasakshi.envelope.model import DecisionEnvelope
 from karmasakshi.errors import KeyLoadError
 from karmasakshi.grants.model import ExecutionGrant
-from karmasakshi.handoff.model import HandoffEnvelope, WorkflowExport
+from karmasakshi.handoff.model import HandoffAcceptance, HandoffEnvelope, WorkflowExport
 from karmasakshi.intelligence.model import EffectAssessment
 from karmasakshi.outbox.sqlite import SQLiteOutboxStore
 from karmasakshi.policy.bundle import PolicyBundle, SealedPolicyBundle
@@ -283,6 +284,21 @@ class Workspace:
         path = self.handoffs_dir / f"{handoff_id}.json"
         return HandoffEnvelope.model_validate_json(path.read_text(encoding="utf-8"))
 
+    def has_handoff(self, handoff_id: str) -> bool:
+        return (self.handoffs_dir / f"{handoff_id}.json").exists()
+
+    def save_handoff_acceptance(self, acceptance: HandoffAcceptance) -> Path:
+        self.handoffs_dir.mkdir(parents=True, exist_ok=True)
+        path = self.handoffs_dir / f"{acceptance.handoff_id}.accepted.json"
+        path.write_text(acceptance.model_dump_json(indent=2), encoding="utf-8")
+        return path
+
+    def load_handoff_acceptance(self, handoff_id: str) -> HandoffAcceptance | None:
+        path = self.handoffs_dir / f"{handoff_id}.accepted.json"
+        if not path.exists():
+            return None
+        return HandoffAcceptance.model_validate_json(path.read_text(encoding="utf-8"))
+
     def save_workflow_export(self, export: WorkflowExport) -> Path:
         self.workflows_dir.mkdir(parents=True, exist_ok=True)
         path = self.workflows_dir / f"{export.workflow_id}.json"
@@ -295,6 +311,28 @@ class Workspace:
 
     def has_workflow(self, workflow_id: str) -> bool:
         return (self.workflows_dir / f"{workflow_id}.json").exists()
+
+    def list_workflow_ids(self) -> list[str]:
+        if not self.workflows_dir.exists():
+            return []
+        return sorted(path.stem for path in self.workflows_dir.glob("*.json"))
+
+    # --- payment simulator ----------------------------------------------------
+
+    def payment_simulator_path(self) -> Path:
+        return self.root / "payment-simulator.json"
+
+    def load_payment_simulator(self) -> PaymentSimulator:
+        path = self.payment_simulator_path()
+        if not path.exists():
+            return PaymentSimulator()
+        return PaymentSimulator.restore(json.loads(path.read_text(encoding="utf-8")))
+
+    def save_payment_simulator(self, simulator: PaymentSimulator) -> Path:
+        self.root.mkdir(parents=True, exist_ok=True)
+        path = self.payment_simulator_path()
+        path.write_text(json.dumps(simulator.snapshot(), indent=2), encoding="utf-8")
+        return path
 
     # --- commit results -------------------------------------------------------
 

@@ -5,6 +5,7 @@ from typing import Annotated
 
 import typer
 
+from karmasakshi.adapters.payment_simulator import PaymentSimulatorAdapter
 from karmasakshi.cli.adapter_factory import build_adapter, build_request
 from karmasakshi.cli.common import emit, run_guarded
 from karmasakshi.cli.workspace import Workspace
@@ -48,12 +49,14 @@ def prepare(
 
     def _do() -> None:
         workspace.ensure_initialized()
+        payment_simulator = workspace.load_payment_simulator() if adapter == "payment" else None
         adapter_instance = build_adapter(
             adapter,
             sqlite_db_path=sqlite_db_path,
             sqlite_table=sqlite_table,
             fund_source_account=fund_source_account,
             fund_account_id=source_account or "acct-src",
+            payment_simulator=payment_simulator,
         )
         request = build_request(
             adapter,
@@ -78,6 +81,8 @@ def prepare(
         )
         engine = workspace.build_engine()
         manifest = engine.prepare(adapter_instance, request, context=None)
+        if isinstance(adapter_instance, PaymentSimulatorAdapter):
+            workspace.save_payment_simulator(adapter_instance.simulator)
         path = workspace.save_unsealed_manifest(manifest)
         emit(
             {"manifest_id": manifest.manifest_id, "path": str(path)},

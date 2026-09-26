@@ -13,7 +13,7 @@ simulator by idempotency key.
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 
@@ -80,6 +80,59 @@ class PaymentSimulator:
 
     def get_balance(self, account: str) -> int:
         return self.balances.get(account, 0)
+
+    def snapshot(self) -> dict[str, Any]:
+        """Balances and payment records, stable enough to write to disk."""
+        return {
+            "balances": {account: self.balances[account] for account in sorted(self.balances)},
+            "payments": [asdict(self._payments[key]) for key in sorted(self._payments)],
+        }
+
+    @classmethod
+    def restore(cls, data: dict[str, Any]) -> PaymentSimulator:
+        """Rebuild a simulator from :meth:`snapshot`.
+
+        Rejects a malformed snapshot instead of dropping payments. A later
+        ``verify`` would otherwise report a mismatch for a payment that did
+        settle.
+        """
+        if not isinstance(data, dict):
+            raise ValueError("payment simulator snapshot must be an object")
+        balances = data.get("balances", {})
+        payments = data.get("payments", [])
+        if not isinstance(balances, dict) or not isinstance(payments, list):
+            raise ValueError("payment simulator snapshot has the wrong shape")
+        simulator = cls()
+        for account, amount in balances.items():
+            if not isinstance(account, str) or not account:
+                raise ValueError("payment simulator snapshot account id is invalid")
+            if isinstance(amount, bool) or not isinstance(amount, int):
+                raise ValueError(f"payment simulator balance for {account!r} is not an int")
+            simulator.balances[account] = amount
+        for item in payments:
+            if not isinstance(item, dict):
+                raise ValueError("payment simulator snapshot payment is not an object")
+            record = PaymentRecord(
+                provider_idempotency_key=str(item["provider_idempotency_key"]),
+                beneficiary=str(item["beneficiary"]),
+                amount_minor_units=item["amount_minor_units"],
+                currency=str(item["currency"]),
+                fee_minor_units=item["fee_minor_units"],
+                status=item["status"],
+                reference=str(item["reference"]),
+            )
+            if record.status not in ("settled", "failed"):
+                raise ValueError(f"unknown payment status {record.status!r}")
+            if isinstance(record.amount_minor_units, bool) or not isinstance(
+                record.amount_minor_units, int
+            ):
+                raise ValueError("payment amount_minor_units must be an int")
+            if isinstance(record.fee_minor_units, bool) or not isinstance(
+                record.fee_minor_units, int
+            ):
+                raise ValueError("payment fee_minor_units must be an int")
+            simulator._payments[record.provider_idempotency_key] = record
+        return simulator
 
     def inject_failure(self) -> None:
         """Next submit_payment() call returns a failed payment record."""

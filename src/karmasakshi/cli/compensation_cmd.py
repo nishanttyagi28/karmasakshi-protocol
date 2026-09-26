@@ -142,12 +142,14 @@ def compensation_execute(
         original = workspace.load_sealed_manifest(original_manifest_id)
         compensation = workspace.load_sealed_manifest(compensation_manifest_id)
         grant = workspace.load_grant(grant_id)
+        payment_simulator = workspace.load_payment_simulator() if adapter == "payment" else None
         adapter_instance = build_adapter(
             adapter,
             sqlite_db_path=sqlite_db_path,
             sqlite_table=sqlite_table,
             fund_source_account=fund_source_account,
             fund_account_id=fund_account_id,
+            payment_simulator=payment_simulator,
         )
         engine = workspace.build_engine()
         workspace.reconstruct_lifecycle_state(engine, original_manifest_id)
@@ -166,6 +168,8 @@ def compensation_execute(
             original_commit=original_commit,
         )
         workspace.save_commit_result(compensation_manifest_id, result)
+        if payment_simulator is not None:
+            workspace.save_payment_simulator(payment_simulator)
         emit(
             {
                 "original_manifest_id": original_manifest_id,
