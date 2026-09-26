@@ -11,11 +11,14 @@ the other two agents before anything is committed.
 Run from the repo root:
 
     python examples/multi_agent_handoff/run_workflow.py
+    karmasakshi workflow export wf-refund-8842 --workspace .karmasakshi
 """
 
 from __future__ import annotations
 
+import argparse
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, TypedDict
 
 from langgraph.checkpoint.memory import MemorySaver
@@ -28,6 +31,7 @@ from karmasakshi.adapters.payment_simulator import (
     PaymentSimulatorAdapter,
 )
 from karmasakshi.audit.journal import AuditJournal
+from karmasakshi.cli.workspace import Workspace
 from karmasakshi.crypto import Keyring, SigningKey, generate_signing_key
 from karmasakshi.domain.common import MonetaryAmount, Principal
 from karmasakshi.domain.enums import PrincipalType
@@ -35,6 +39,7 @@ from karmasakshi.engine import EngineContext, KarmaSakshiEngine
 from karmasakshi.errors import KarmaSakshiError
 from karmasakshi.grants.model import ScopeConstraints
 from karmasakshi.handoff import (
+    WorkflowExport,
     WorkflowRecord,
     accept_handoff,
     create_handoff,
@@ -313,15 +318,34 @@ def run_demo() -> dict[str, Any]:
     }
 
 
-def main() -> None:
+def persist_workflow(export: WorkflowExport, workspace: Path) -> Path:
+    """Write the export where ``karmasakshi workflow export`` can read it."""
+    ws = Workspace(workspace)
+    ws.ensure_initialized()
+    for envelope in export.handoffs:
+        ws.save_handoff(envelope)
+    return ws.save_workflow_export(export)
+
+
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(description="Run the three-agent handoff example.")
+    parser.add_argument(
+        "--workspace",
+        default=".karmasakshi",
+        help="Directory to write the workflow export into (default: ./.karmasakshi)",
+    )
+    args = parser.parse_args(argv)
     result = run_demo()
     export = result["export"]
+    saved = persist_workflow(export, Path(args.workspace))
     print(f"status: {result['status']}")
     print(f"passport: {result['passport_status']}")
     print(f"evidence_verified: {result['evidence_verified']}")
     print(f"workflow: {export.workflow_id}")
     print(f"handoffs: {len(export.handoffs)}")
     print(f"operating balance: {result['balance']}")
+    print(f"saved: {saved}")
+    print(f"karmasakshi workflow export {export.workflow_id} --workspace {args.workspace}")
     if not result["evidence_verified"]:
         raise SystemExit(1)
 

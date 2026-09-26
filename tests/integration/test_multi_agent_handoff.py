@@ -6,8 +6,9 @@ import pytest
 
 pytest.importorskip("langgraph")
 
-from examples.multi_agent_handoff.run_workflow import run_demo
+from examples.multi_agent_handoff.run_workflow import persist_workflow, run_demo
 
+from karmasakshi.cli.app import app as cli_app
 from karmasakshi.passports.v2 import OutcomeStatus
 from karmasakshi.portable import verify_evidence_pack
 
@@ -29,3 +30,19 @@ def test_example_workflow_ends_in_verified_passport_and_evidence_pack():
     pack = verify_evidence_pack(export.evidence_packs[0])
     assert pack.all_verified
     assert result["balance"] == 1_000_000 - 150_000
+
+
+def test_example_writes_a_workspace_the_cli_can_export(tmp_path):
+    pytest.importorskip("typer")
+    from typer.testing import CliRunner
+
+    result = run_demo()
+    workspace = tmp_path / "ws"
+    persist_workflow(result["export"], workspace)
+    exported = CliRunner().invoke(
+        cli_app,
+        ["--workspace", str(workspace), "workflow", "export", result["export"].workflow_id],
+    )
+    assert exported.exit_code == 0, exported.output
+    flat = " ".join(exported.output.split())
+    assert "2 handoff(s), 1 passport(s), 1 evidence pack(s); VERIFIED" in flat
