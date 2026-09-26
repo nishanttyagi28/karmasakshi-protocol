@@ -89,7 +89,10 @@ OpenAPI JSON at `/openapi.json` (interactive docs at `/docs`).
 `/console/` — dashboard (pending approvals, kill switch, audit integrity),
 `/console/manifests/{id}` (before/after fields, approve/deny HTML forms),
 `/console/grants` (active/revoked, delegation lineage via the Parent
-column), `/console/audit` (timeline). Plain server-rendered HTML, no
+column), `/console/audit` (timeline), `/console/workflows` and
+`/console/workflows/{id}` (read-only handoff tree, passport outcome, and
+evidence-pack check for the CLI workspace at `.karmasakshi` or
+`KARMASAKSHI_HOME`). Plain server-rendered HTML, no
 JavaScript build step — forms POST directly to console routes, which share
 the same auth dependency as the JSON API.
 

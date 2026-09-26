@@ -1,4 +1,4 @@
-# Security Model: the 80 Invariants
+# Security Model: the 85 Invariants
 
 Each invariant below is implemented in a specific, named location and
 verified by at least one named test. This list exists so a reviewer can
@@ -85,8 +85,13 @@ under a minute per row.
 | 76 | The receiving agent must be the handoff addressee and the delegated grant's subject | `accept_handoff` | `test_wrong_receiver_is_rejected` |
 | 77 | Accepting a handoff fails closed unless `verify_grant`, `verify_delegation_chain`, and `assert_no_revoked_ancestors` all succeed (expired window, revoked ancestor, missing lineage, depth above `MAX_DELEGATION_DEPTH`) | `accept_handoff` / `create_handoff` | `test_expired_handoff_is_rejected`, `test_revoked_grandparent_is_rejected`, `test_missing_lineage_is_rejected`, `test_delegation_deeper_than_max_depth_is_rejected` |
 | 78 | An agent principal cannot be the issuer of a handoff's delegated grant | `create_handoff` → `engine.delegate` → `issue_grant` | `test_agent_cannot_be_handoff_issuer` |
-| 79 | A handoff cannot widen scope or amount relative to the parent grant | `create_handoff` → `engine.delegate` → `assert_grant_narrower_or_equal` | `test_wider_amount_is_rejected`, `test_wider_recipient_scope_is_rejected` |
+| 79 | A handoff cannot widen scope or amount relative to the parent grant | `create_handoff` → `engine.delegate` → `assert_grant_narrower_or_equal` | `test_wider_amount_is_rejected`, `test_wider_recipient_scope_is_rejected`, `test_grant_issue_scope_flags_and_widening_rejected` |
 | 80 | A workflow export fails offline verification if a handoff from another workflow is spliced in, or if an embedded Evidence Pack fails `verify_evidence_pack` | `verify_workflow_export` | `test_three_agent_workflow_verifies_offline`, `test_spliced_handoff_from_other_workflow_fails`, `test_example_workflow_ends_in_verified_passport_and_evidence_pack` |
+| 81 | `execute` records a passport on a workflow only after that handoff was accepted by its addressee, belongs to that workflow, and the grant is the delegated grant | `assert_handoff_ready_for_execute` → `accept_handoff` | `test_execute_rejects_unaccepted_wrong_workflow_and_mismatched_grant`, `test_cli_workflow_export_includes_passport_and_evidence` |
+| 82 | `workflow verify` fails closed when the export hash, a handoff hash, or an embedded Evidence Pack does not check out | `verify_workflow_export` | `test_cli_workflow_export_includes_passport_and_evidence`, `test_workflow_verify_rejects_spliced_evidence_pack` |
+| 83 | A revocation list passed to workflow verification fails the export if any grant in a handoff chain is listed; omitting the list does not change the historical verdict | `verify_workflow_export(revoked_grant_ids=)` | `test_cli_workflow_export_includes_passport_and_evidence` |
+| 84 | A caller-chosen handoff id that already exists in the workspace is rejected before another grant is delegated | `handoff create` | `test_duplicate_handoff_id_is_rejected` |
+| 85 | `execute --fund-account-id` that does not match the sealed source account is rejected before commit | `_fund_manifest_source` | `test_fund_account_id_must_match_manifest_source_and_does_not_fail_the_manifest` |
 
 ## What this table does not claim
 

@@ -40,7 +40,11 @@ certification.**
     (invariants #75–#77). The issuer of every hop is still a human or
     service (invariant #78). Attenuation is the existing delegate check
     (invariant #79). `verify_workflow_export` rejects a foreign handoff
-    and re-checks each embedded Evidence Pack (invariant #80).
+    and re-checks each embedded Evidence Pack (invariant #80). CLI
+    `execute` will not record a passport unless that handoff was accepted
+    for that workflow with that grant (invariant #81). A later revocation
+    list is an opt-in check on `workflow verify` (invariant #83); the
+    export itself is not rewritten when a grant is revoked afterwards.
 
 ## New trusted component: the Effect Intelligence Engine
 

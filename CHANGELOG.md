@@ -21,6 +21,27 @@ loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   (planner, researcher, executor; no model calls).
 - Security invariants 75–80. See
   [docs/multi-agent-handoff.md](docs/multi-agent-handoff.md).
+- CLI `execute --workflow-id --handoff-id` records the Action Passport and
+  Evidence Pack after commit and verify. It fails closed unless that
+  handoff was accepted by the executing agent, belongs to the workflow,
+  and the grant is the delegated one.
+- `karmasakshi workflow verify <file>` checks an export offline (exit 0
+  or 2). `--revocations` is optional: revocation stays enforced at accept
+  and commit, and a historical export does not include the live set.
+- `grant issue` accepts `--max-amount-minor`, `--currency`,
+  `--allowed-recipient`, and `--effect-type`. Defaults are unchanged when
+  the flags are omitted. `handoff create --handoff-id` rejects a duplicate
+  id in the workspace.
+- The example writes its workflow into a workspace (`--workspace`, default
+  `./.karmasakshi`) so `workflow export` can read it.
+- Read-only console pages `/console/workflows` and
+  `/console/workflows/{id}` show the handoff tree, passport outcomes, and
+  evidence-pack checks from the CLI workspace.
+- The payment simulator snapshot is stored in the workspace, so `verify`
+  works in a later process. `execute --fund-source-account` credits the
+  manifest's source account and errors if `--fund-account-id` does not
+  match, before commit.
+- Security invariants 81–85.
 
 ## [0.2.0] - 2026-07-30
 
