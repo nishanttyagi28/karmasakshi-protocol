@@ -48,7 +48,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-redis = ["redis>=5.0,<6"]
+redis = ["redis>=5.0,<9"]
 api = ["fastapi>=0.111,<1.0", "uvicorn[standard]>=0.30,<1.0", "jinja2>=3.1,<4", "python-multipart>=0.0.9", "httpx>=0.27,<1.0"]
 langgraph = ["langgraph>=1.0.10,<2", "langchain-core>=1.0,<2", "langgraph-checkpoint>=4.1.1,<5"]
 sdk = ["httpx>=0.27,<1.0"]
