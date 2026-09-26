@@ -5,6 +5,23 @@ loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Multi-agent handoff. `create_handoff` delegates through `engine.delegate`
+  (attenuation, budget inheritance, depth, and the agent-issuer ban stay
+  where they already are). `accept_handoff` checks the envelope hash,
+  `verify_grant`, `verify_delegation_chain`, and
+  `assert_no_revoked_ancestors` before the receiver acts.
+- A workflow export that links those handoffs to Action Passports and
+  Evidence Packs. Offline verification calls `verify_evidence_pack` and
+  rejects a handoff spliced from another workflow.
+- CLI: `karmasakshi handoff create|accept|inspect` and
+  `karmasakshi workflow export`.
+- Offline example: `examples/multi_agent_handoff/run_workflow.py`
+  (planner, researcher, executor; no model calls).
+- Security invariants 75–80. See
+  [docs/multi-agent-handoff.md](docs/multi-agent-handoff.md).
+
 ## [0.2.0] - 2026-07-30
 
 Evaluation-ready self-hosted Milestone A release of the protocol after the

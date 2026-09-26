@@ -1,4 +1,4 @@
-# Security Model: the 74 Invariants
+# Security Model: the 80 Invariants
 
 Each invariant below is implemented in a specific, named location and
 verified by at least one named test. This list exists so a reviewer can
@@ -81,6 +81,12 @@ under a minute per row.
 | 72 | Clients exceeding the configured API rate limit fail closed | `FixedWindowRateLimiter` / `ResourceProtectionMiddleware` | `test_rate_limiter_trips` |
 | 73 | Action Passport V2 never classifies executor success alone as `verified_match` | `derive_outcome_status` | `test_adversary_cannot_force_verified_match_from_executor_success_alone`, `test_passport_v2_upgrade_verified_match` |
 | 74 | A portable Evidence Pack fails offline verification if any embedded component (sealed manifest, grant, passport, audit slice) does not cryptographically and referentially match the others -- individually-authentic components spliced from a different manifest are not enough | `verify_evidence_pack()` | `test_cross_pack_sealed_manifest_splice_rejected`, `test_cross_pack_audit_slice_splice_rejected`, `tests/unit/test_portable_evidence.py` |
+| 75 | A handoff envelope whose canonical content hash does not match is rejected before the receiver acts | `accept_handoff` recomputes `HandoffEnvelope.compute_content_hash` | `test_tampered_envelope_is_rejected` |
+| 76 | The receiving agent must be the handoff addressee and the delegated grant's subject | `accept_handoff` | `test_wrong_receiver_is_rejected` |
+| 77 | Accepting a handoff fails closed unless `verify_grant`, `verify_delegation_chain`, and `assert_no_revoked_ancestors` all succeed (expired window, revoked ancestor, missing lineage, depth above `MAX_DELEGATION_DEPTH`) | `accept_handoff` / `create_handoff` | `test_expired_handoff_is_rejected`, `test_revoked_grandparent_is_rejected`, `test_missing_lineage_is_rejected`, `test_delegation_deeper_than_max_depth_is_rejected` |
+| 78 | An agent principal cannot be the issuer of a handoff's delegated grant | `create_handoff` → `engine.delegate` → `issue_grant` | `test_agent_cannot_be_handoff_issuer` |
+| 79 | A handoff cannot widen scope or amount relative to the parent grant | `create_handoff` → `engine.delegate` → `assert_grant_narrower_or_equal` | `test_wider_amount_is_rejected`, `test_wider_recipient_scope_is_rejected` |
+| 80 | A workflow export fails offline verification if a handoff from another workflow is spliced in, or if an embedded Evidence Pack fails `verify_evidence_pack` | `verify_workflow_export` | `test_three_agent_workflow_verifies_offline`, `test_spliced_handoff_from_other_workflow_fails`, `test_example_workflow_ends_in_verified_passport_and_evidence_pack` |
 
 ## What this table does not claim
 

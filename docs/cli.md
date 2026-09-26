@@ -82,6 +82,13 @@ karmasakshi passport <manifest_id> [--format json|markdown|html] [--version v1|v
 karmasakshi evidence-pack build <manifest_id> [--grant-id ID] [-o FILE]
 karmasakshi evidence-pack verify <pack_file>
 
+karmasakshi handoff create <parent_grant_id> --to-agent ID --task TEXT --issuer-id ID --key-id ID --workflow-id ID
+    [--from-agent ID] [--effect-type TYPE ...] [--recipient ID ...] [--max-amount-minor N]
+    [--max-uses N] [--ttl-seconds N] [--manifest-id ID]
+karmasakshi handoff accept <handoff_id> --agent-id ID
+karmasakshi handoff inspect <handoff_id>
+karmasakshi workflow export <workflow_id> [-o FILE]
+
 karmasakshi agenteval record <manifest_id> --failure-category CAT [--invariant STR]
 karmasakshi agenteval history
 

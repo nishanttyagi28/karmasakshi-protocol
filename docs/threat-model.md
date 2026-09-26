@@ -34,6 +34,13 @@ certification.**
 9. **Storage or audit-sink outages producing an indeterminate "maybe it
    worked" state.** Defended by fail-closed error propagation — no
    `except: pass` anywhere in the commit path (invariants #10, #23).
+10. **One agent handing another a wider, expired, revoked, or rewritten
+    grant, or splicing a handoff from a different workflow into an
+    export.** The receiver must accept the envelope before it acts
+    (invariants #75–#77). The issuer of every hop is still a human or
+    service (invariant #78). Attenuation is the existing delegate check
+    (invariant #79). `verify_workflow_export` rejects a foreign handoff
+    and re-checks each embedded Evidence Pack (invariant #80).
 
 ## New trusted component: the Effect Intelligence Engine
 

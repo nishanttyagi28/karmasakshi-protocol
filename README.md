@@ -116,13 +116,13 @@ Things you can verify in this repo (verified against current `main`):
 
 | | |
 | --- | --- |
-| Automated tests | **1049 passed**, 8 skipped (Redis tests skip without a live Redis) |
-| Security invariants documented + mapped to tests | **74** ([docs/security-model.md](docs/security-model.md)) |
+| Automated tests | **1062 passed**, 8 skipped (Redis tests skip without a live Redis) |
+| Security invariants documented + mapped to tests | **80** ([docs/security-model.md](docs/security-model.md)) |
 | Deterministic demo scenarios | **15** (`karmasakshi demo --all`) |
 | Buyer acceptance checks | **25** (`karmasakshi-acceptance`) |
 | Reference adapters | **3** (payment simulator, email sandbox, SQLite) |
-| Python package source files | **186** |
-| Docs pages under `docs/` | **61** |
+| Python package source files | **191** |
+| Docs pages under `docs/` | **62** |
 | Python | 3.10–3.13 |
 | License | MIT |
 | Version | 0.2.0 (experimental) |
@@ -234,7 +234,7 @@ karmasakshi doctor
 karmasakshi audit list|show|verify
 ```
 
-Also: `graph`, `envelope`, `policy`, `approvals`, `witness`, `evidence-pack`, `compensation`, `agenteval`.
+Also: `graph`, `envelope`, `policy`, `approvals`, `witness`, `evidence-pack`, `compensation`, `agenteval`, `handoff`, `workflow`.
 
 Full reference: [docs/cli.md](docs/cli.md).
 
@@ -263,7 +263,7 @@ manifest = engine.prepare(adapter, request, context=None)
 sealed = engine.seal(manifest, signing_key)
 grant = engine.authorize(
     sealed,
-    issuer=human,          # never the agent
+    issuer=human,  # never the agent
     subject=agent,
     audience=("payment.simulator",),
     allowed_effect_types=("payment.transfer",),
@@ -278,6 +278,24 @@ proof = engine.verify(sealed.manifest, result, adapter, context=None)
 ```
 
 A longer refund example and failure modes live in the older technical write-ups under `docs/`.
+
+---
+
+## Multi-agent handoff
+
+A planner can pass work to another agent only as a narrower grant. The receiver checks the envelope (hash, signature, chain, revocation, expiry, addressee) before it acts. The human or service key still issues every grant. An agent cannot.
+
+```bash
+pip install -e ".[langgraph]"
+python examples/multi_agent_handoff/run_workflow.py
+```
+
+That run is offline: three fixed agents, one simulated payment, passports, and one evidence pack. Details: [docs/multi-agent-handoff.md](docs/multi-agent-handoff.md).
+
+```text
+karmasakshi handoff create|accept|inspect
+karmasakshi workflow export <workflow-id>
+```
 
 ---
 
@@ -298,7 +316,8 @@ Protocol demo video (agent proposes refund → approve → verify → tamper blo
 Start here if you want depth:
 
 - [docs/architecture.md](docs/architecture.md) — components and data flow
-- [docs/security-model.md](docs/security-model.md) — 74 invariants ↔ code ↔ tests
+- [docs/security-model.md](docs/security-model.md) — 80 invariants ↔ code ↔ tests
+- [docs/multi-agent-handoff.md](docs/multi-agent-handoff.md) — agents pass a narrowed grant, then a passport
 - [docs/threat-model.md](docs/threat-model.md) — what is and isn’t defended
 - [docs/limitations.md](docs/limitations.md) — honest limits
 - [docs/cli.md](docs/cli.md) · [docs/api.md](docs/api.md) · [docs/sdk.md](docs/sdk.md)

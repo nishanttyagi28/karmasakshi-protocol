@@ -29,6 +29,7 @@ flowchart TB
         adapters["adapters/\nsqlite_db, email_sandbox,\npayment_simulator"]
         passports["passports/\nAction Passport"]
         integrations["integrations/\nlanggraph, agenteval"]
+        handoff["handoff/\nenvelope, accept, workflow export"]
         cli["cli/"]
         api["api/, web/"]
     end
@@ -44,6 +45,7 @@ flowchart TB
     engine --> adapters
     passports --> engine
     integrations --> engine
+    handoff --> engine
     cli --> engine
     api --> engine
 ```
