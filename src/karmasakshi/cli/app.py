@@ -22,11 +22,13 @@ from karmasakshi.cli.execute_cmd import compensate, execute
 from karmasakshi.cli.execute_cmd import verify as execute_verify
 from karmasakshi.cli.grant_cmd import grant_app
 from karmasakshi.cli.graph_cmd import graph_app
+from karmasakshi.cli.handoff_cmd import handoff_app
 from karmasakshi.cli.key_cmd import key_app
 from karmasakshi.cli.manifest_cmd import prepare, seal
 from karmasakshi.cli.passport_cmd import passport
 from karmasakshi.cli.policy_cmd import policy_app
 from karmasakshi.cli.witness_cmd import witness_app
+from karmasakshi.cli.workflow_cmd import workflow_app
 from karmasakshi.cli.workspace import Workspace, default_workspace_path
 
 app = typer.Typer(
@@ -45,6 +47,8 @@ app.add_typer(policy_app, name="policy")
 app.add_typer(approvals_app, name="approvals")
 app.add_typer(witness_app, name="witness")
 app.add_typer(evidence_pack_app, name="evidence-pack")
+app.add_typer(handoff_app, name="handoff")
+app.add_typer(workflow_app, name="workflow")
 app.add_typer(agenteval_app, name="agenteval")
 
 

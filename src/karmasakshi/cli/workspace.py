@@ -35,6 +35,7 @@ from karmasakshi.engine.core import KarmaSakshiEngine
 from karmasakshi.envelope.model import DecisionEnvelope
 from karmasakshi.errors import KeyLoadError
 from karmasakshi.grants.model import ExecutionGrant
+from karmasakshi.handoff.model import HandoffEnvelope, WorkflowExport
 from karmasakshi.intelligence.model import EffectAssessment
 from karmasakshi.outbox.sqlite import SQLiteOutboxStore
 from karmasakshi.policy.bundle import PolicyBundle, SealedPolicyBundle
@@ -65,6 +66,8 @@ class Workspace:
         self.witnesses_dir = self.root / "witnesses"
         self.causal_graphs_dir = self.root / "causal-graphs"
         self.envelopes_dir = self.root / "envelopes"
+        self.handoffs_dir = self.root / "handoffs"
+        self.workflows_dir = self.root / "workflows"
 
     def ensure_initialized(self) -> None:
         for d in (
@@ -77,6 +80,8 @@ class Workspace:
             self.witnesses_dir,
             self.causal_graphs_dir,
             self.envelopes_dir,
+            self.handoffs_dir,
+            self.workflows_dir,
         ):
             d.mkdir(parents=True, exist_ok=True)
 
@@ -265,6 +270,31 @@ class Workspace:
     def load_grant(self, grant_id: str) -> ExecutionGrant:
         path = self.grants_dir / f"{grant_id}.json"
         return ExecutionGrant.model_validate_json(path.read_text(encoding="utf-8"))
+
+    # --- handoffs / workflows -------------------------------------------------
+
+    def save_handoff(self, envelope: HandoffEnvelope) -> Path:
+        self.handoffs_dir.mkdir(parents=True, exist_ok=True)
+        path = self.handoffs_dir / f"{envelope.handoff_id}.json"
+        path.write_text(envelope.model_dump_json(indent=2), encoding="utf-8")
+        return path
+
+    def load_handoff(self, handoff_id: str) -> HandoffEnvelope:
+        path = self.handoffs_dir / f"{handoff_id}.json"
+        return HandoffEnvelope.model_validate_json(path.read_text(encoding="utf-8"))
+
+    def save_workflow_export(self, export: WorkflowExport) -> Path:
+        self.workflows_dir.mkdir(parents=True, exist_ok=True)
+        path = self.workflows_dir / f"{export.workflow_id}.json"
+        path.write_text(export.model_dump_json(indent=2), encoding="utf-8")
+        return path
+
+    def load_workflow_export(self, workflow_id: str) -> WorkflowExport:
+        path = self.workflows_dir / f"{workflow_id}.json"
+        return WorkflowExport.model_validate_json(path.read_text(encoding="utf-8"))
+
+    def has_workflow(self, workflow_id: str) -> bool:
+        return (self.workflows_dir / f"{workflow_id}.json").exists()
 
     # --- commit results -------------------------------------------------------
 
