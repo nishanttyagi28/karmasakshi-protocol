@@ -1,5 +1,7 @@
 # KarmaSakshi Protocol
 
+Live demo: https://karmasakshi-protocol.vercel.app
+
 A Python library and CLI that ties an approval to one exact agent action, runs it at most once, and then checks that the real outcome matches what was approved.
 
 [![CI](https://github.com/nishanttyagi28/karmasakshi-protocol/actions/workflows/ci.yml/badge.svg)](https://github.com/nishanttyagi28/karmasakshi-protocol/actions/workflows/ci.yml)
