@@ -25,11 +25,10 @@ def test_use_count_never_exceeds_max_uses_under_any_sequential_action_order(acti
         elif action == "release":
             store.release(grant_id)
             reserved = False
-        elif action == "commit":
-            if reserved:
-                store.commit(grant_id, f"idem-{i}", f"ref-{i}")
-                reserved = False
-                expected_uses += 1
+        elif action == "commit" and reserved:
+            store.commit(grant_id, f"idem-{i}", f"ref-{i}")
+            reserved = False
+            expected_uses += 1
 
     assert store.get_use_count(grant_id) == expected_uses
     assert store.get_use_count(grant_id) <= max_uses
