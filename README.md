@@ -1,6 +1,6 @@
 # KarmaSakshi Protocol
 
-Live demo: https://karmasakshi-protocol.vercel.app
+Live demo: https://karmasakshi-protocol.vercel.app/control-center/login (health check: [/health](https://karmasakshi-protocol.vercel.app/health))
 
 A Python library and CLI that ties an approval to one exact agent action, runs it at most once, and then checks that the real outcome matches what was approved.
 
